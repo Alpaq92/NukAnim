@@ -136,6 +136,9 @@ NKA_API struct nka_vec4 nka_tween_vec4_resolved(struct nka_context *a, nk_hash i
 NKA_API struct nk_colorf nka_tween_color_resolved(struct nka_context *a, nk_hash id, nk_hash ch, nka_color_resolver fn, void *user, float dur, struct nka_ease ease, int policy, int space);
 NKA_API int nka_tween_int_resolved(struct nka_context *a, nk_hash id, nk_hash ch, nka_int_resolver fn, void *user, float dur, struct nka_ease ease, int policy);
 
+/* How far a running tween has got, from 0 to 1, or -1 when it is not running. */
+NKA_API float nka_tween_progress(const struct nka_context *a, nk_hash id, nk_hash ch);
+
 /* Points a running tween somewhere else in the time it has left. */
 NKA_API void nka_rebase_float(struct nka_context *a, nk_hash id, nk_hash ch, float target);
 NKA_API void nka_rebase_vec2(struct nka_context *a, nk_hash id, nk_hash ch, struct nk_vec2 target);
@@ -1561,7 +1564,7 @@ static void nka__tween(struct nka_context *a, nk_hash id, nk_hash ch, int kind, 
     } else if (policy == NKA_POLICY_QUEUE && !done) {
         c->pending = (unsigned char)!same;
         for (i = 0; i < 4; ++i) c->pend[i] = target[i];
-    } else if (!same || (!cfg && policy < NKA_POLICY_ADDITIVE)) {
+    } else if (!same || (!cfg && policy < NKA_POLICY_ADDITIVE && !c->sleeping)) {
         float to[4];
         nka__chan_eval(a, c);
         for (i = 0; i < 4; ++i) {
@@ -1732,6 +1735,17 @@ NKA_API int nka_tween_int_resolved(struct nka_context *a, nk_hash id, nk_hash ch
                                    void *user, float dur, struct nka_ease ease, int policy)
 {
     return nka_tween_int(a, id, ch, fn ? fn(user) : 0, dur, ease, policy, 0);
+}
+
+NKA_API float nka_tween_progress(const struct nka_context *a, nk_hash id, nk_hash ch)
+{
+    int kind;
+    if (!a) return -1;
+    for (kind = NKA__FLOAT; kind <= NKA__COLOR; ++kind) {
+        const struct nka__chan *c = (const struct nka__chan *)nka__get(&a->chans, nka__key(id, ch, kind));
+        if (c && !c->sleeping) return nka__clamp01((float)((a->time - c->start) / c->dur));
+    }
+    return -1;
 }
 
 static void nka__rebase(struct nka_context *a, nk_hash id, nk_hash ch, int kind, const float *target)
@@ -6749,6 +6763,7 @@ NKA_API void nka_show_debug_timeline(struct nka_context *a, struct nk_context *c
             float x1 = x0 + (c->delay + key->time) / total * w, x2 = x0 + (c->delay + next) / total * w;
             int on = in->delay <= 0 && in->time >= key->time && in->time < next;
             struct nk_rect seg = nk_rect(x1, ty + 2, x2 - x1, 16), dot = nk_rect(x1 - 8, ty + 2, 16, 16);
+            struct nk_rect next_dot = nk_rect(x2 - 8, ty + 2, 16, 16);
             if (on) nk_fill_rect(out, nk_rect(x1 - 1, ty + 1, x2 - x1 + 2, 18), 3, i & 1 ? c2_lit : c1_lit);
             nk_fill_rect(out, seg, 2, on ? (i & 1 ? c2 : c1) : (i & 1 ? c2_dim : c1_dim));
             nk_fill_circle(out, dot, on ? head : (i & 1 ? c2 : c1));
@@ -6759,7 +6774,8 @@ NKA_API void nka_show_debug_timeline(struct nka_context *a, struct nk_context *c
                 nka__nk_put(&t, "s   ");
                 nka__nk_ease(&t, key->ease);
                 nk_tooltip(ctx, t.s);
-            } else if (nk_input_is_mouse_hovering_rect(&ctx->input, seg)) {
+            } else if (nk_input_is_mouse_hovering_rect(&ctx->input, seg) &&
+                       !(k + 1 < tr->count && nk_input_is_mouse_hovering_rect(&ctx->input, next_dot))) {
                 nk_stroke_rect(out, seg, 2, 2, head);
                 nka__nk_num(&t, key->time, 2);
                 nka__nk_put(&t, "s - ");
@@ -6782,6 +6798,16 @@ NKA_API void nka_show_debug_timeline(struct nka_context *a, struct nk_context *c
     ry = y0 + (float)tracks * 22 + 2;
     nk_fill_rect(out, nk_rect(x0, ry, w, 36), 0, lane);
     step = total > 10 ? 2.0f : total > 5 ? 1.0f : total < 1 ? 0.1f : 0.5f;
+    t.n = 0;
+    nka__nk_num(&t, total, 1);
+    nka__nk_put(&t, "s");
+    g = font->width(font->userdata, font->height, t.s, t.n) + 8;
+    while (step / total * w < g && step < total) {
+        float m = step;
+        while (m >= 10) m /= 10;
+        while (m < 1) m *= 10;
+        step *= m > 1.5f && m < 3 ? 2.5f : 2.0f;
+    }
     for (g = 0; g <= total + 0.001f; g += step) {
         float x = x0 + g / total * w, tw;
         nk_stroke_line(out, x, ry, x, ry + 6, 1, grid);

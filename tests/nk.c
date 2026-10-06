@@ -488,6 +488,24 @@ static void test_timeline(void)
     nk_end(&ctx);
     CHECK(window_texts("0.000s   out cubic") == 1);
     nk_clear(&ctx);
+
+    nk_input_begin(&ctx);
+    nk_input_motion(&ctx, (int)(x0 + 1.5f / 2.5f * w) - 2, (int)(r.y + 44 + 10));
+    nk_input_end(&ctx);
+    if (nk_begin(&ctx, "timeline", nk_rect(0, 0, 400, 300), NK_WINDOW_NO_SCROLLBAR))
+        nka_show_debug_timeline(a, &ctx, inst);
+    nk_end(&ctx);
+    CHECK(window_texts("1.000s   linear") == 1 && window_texts("0.00s - 1.00s   out cubic") == 0);
+    nk_clear(&ctx);
+
+    nk_input_begin(&ctx);
+    nk_input_end(&ctx);
+    if (nk_begin(&ctx, "narrow", nk_rect(0, 0, 220, 300), NK_WINDOW_NO_SCROLLBAR))
+        nka_show_debug_timeline(a, &ctx, inst);
+    nk_end(&ctx);
+    CHECK(window_texts("0.0s") == 1 && window_texts("1.0s") == 1 && window_texts("2.0s") == 1);
+    CHECK(window_texts("0.5s") == 0 && window_texts("1.5s") == 0);
+    nk_clear(&ctx);
     nka_destroy(a);
 }
 

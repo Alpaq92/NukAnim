@@ -252,6 +252,36 @@ static void test_tweens(void)
     nka_destroy(a);
 }
 
+static void test_progress(void)
+{
+    struct nka_context *a = nka_create(0);
+    struct nka_ease quad = nka_ease(NKA_EASE_IN_QUAD);
+    struct nk_vec2 zero = { 0, 0 }, far = { 10, 10 };
+    nk_hash id = nka_id("p");
+    CHECK(nka_tween_progress(a, id, 1) == -1 && nka_tween_progress(0, id, 1) == -1);
+    nka_tween_float(a, id, 1, 10, 1, linear, NKA_POLICY_CROSSFADE, 0);
+    CHECK(nka_tween_progress(a, id, 1) == 0);
+    nka_update(a, 0.25f);
+    nka_tween_float(a, id, 1, 10, 1, linear, NKA_POLICY_CROSSFADE, 0);
+    CHECK(NEAR(nka_tween_progress(a, id, 1), 0.25f, 1e-5f));
+    nka_update(a, 1);
+    CHECK(nka_tween_float(a, id, 1, 10, 1, linear, NKA_POLICY_CROSSFADE, 0) == 10);
+    CHECK(nka_tween_progress(a, id, 1) == -1);
+
+    nka_update(a, 0.1f);
+    CHECK(nka_tween_float(a, id, 1, 10, 0.5f, quad, NKA_POLICY_CROSSFADE, 0) == 10);
+    CHECK(!nka_busy(a) && nka_tween_progress(a, id, 1) == -1);
+    CHECK(nka_tween_float(a, id, 1, 20, 1, quad, NKA_POLICY_CROSSFADE, 0) == 10);
+    nka_update(a, 0.5f);
+    CHECK(NEAR(nka_tween_float(a, id, 1, 20, 1, quad, NKA_POLICY_CROSSFADE, 0), 12.5f, 1e-4f));
+
+    nka_tween_vec2(a, id, 2, far, 2, linear, NKA_POLICY_CROSSFADE, zero);
+    nka_update(a, 0.5f);
+    nka_tween_vec2(a, id, 2, far, 2, linear, NKA_POLICY_CROSSFADE, zero);
+    CHECK(NEAR(nka_tween_progress(a, id, 2), 0.25f, 1e-5f));
+    nka_destroy(a);
+}
+
 static float forty_two(void *user) { (void)user; return 42; }
 
 static void test_time(void)
@@ -451,6 +481,7 @@ int main(void)
 {
     test_easing();
     test_tweens();
+    test_progress();
     test_time();
     test_colors();
     test_animate();
