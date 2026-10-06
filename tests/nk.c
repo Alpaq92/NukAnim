@@ -125,7 +125,7 @@ static void test_style(void)
 {
     struct nka_context *a = nka_create(0);
     struct nk_color table[NK_COLOR_COUNT];
-    struct nk_style keep = ctx.style, base, wide, out;
+    struct nk_style keep = ctx.style, base, wide, out = ctx.style;
     struct nk_user_font other = font;
     nk_hash d = nka_id("default"), red = nka_id("red"), big = nka_id("big");
     int i;

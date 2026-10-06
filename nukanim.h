@@ -3339,9 +3339,11 @@ static int nka__clip_install(struct nka_context *a, struct nka__clip_clip *c, co
         nka__clip_release(a, c);
         return NKA_ERR_NO_MEM;
     }
-    order = tmp;
-    tix = tmp + nk;
-    head = tmp + 2 * nk;
+    order = tix = head = tmp;
+    if (tmp) {
+        tix = tmp + nk;
+        head = tmp + 2 * nk;
+    }
     for (i = 0; i < nk; ++i) {
         for (j = i; j > 0 && keys[order[j - 1]].time > keys[i].time; --j) order[j] = order[j - 1];
         order[j] = i;
@@ -4825,7 +4827,7 @@ static void nka__fx_shake(struct nka_context *a, nk_hash id, float frequency, fl
     int i;
     for (i = 0; i < n; ++i) out[i] = 0;
     if (!c || !c->triggered) return;
-    if (c->since >= decay_time) {
+    if (decay_time <= 0 || c->since >= decay_time) {
         c->triggered = 0;
         return;
     }
