@@ -1,0 +1,29 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: linux gcc, os: ubuntu-latest, cmake: -DCMAKE_C_COMPILER=gcc }
+          - { name: linux clang, os: ubuntu-latest, cmake: -DCMAKE_C_COMPILER=clang }
+          - { name: linux sanitizers, os: ubuntu-latest, cmake: -DCMAKE_C_COMPILER=clang -DNUKANIM_SANITIZE=ON }
+          - { name: macos clang, os: macos-latest, cmake: "" }
+          - { name: windows msvc, os: windows-latest, cmake: "" }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Build
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release ${{ matrix.cmake }}
+          cmake --build build --config Release
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure
