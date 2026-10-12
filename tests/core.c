@@ -159,10 +159,10 @@ static void test_tweens(void)
     CHECK(nka_tween_float(a, id, x, 0, 1, linear, NKA_POLICY_CROSSFADE, 0) == 0);
     CHECK(!nka_busy(a));
 
-    nka_set_lazy_init(a, 0);
+    nka_set_keep_at_rest(a, 1);
     CHECK(nka_tween_float(a, id, nka_id("eager"), 3, 1, linear, NKA_POLICY_CROSSFADE, 3) == 3);
     CHECK(a->chans.len == 2 && !nka_busy(a));
-    nka_set_lazy_init(a, 1);
+    nka_set_keep_at_rest(a, 0);
 
     CHECK(nka_tween_float(a, id, nka_id("cut"), 5, 1, linear, NKA_POLICY_CUT, 0) == 5);
     CHECK(!nka_busy(a));

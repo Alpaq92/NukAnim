@@ -75,6 +75,8 @@ glyph, and an inspector window with clip timelines and a profiler. Tested with N
   the `dt` of every call, and `nka_busy` tells an app that only draws on input when to keep going.
 - Nuklear cannot turn text: glyphs on a path stay upright, and the rotate effect fades. Scaled text needs
   a backend that draws Nuklear's vertex output.
+- A tween first asked at its target is not stored until it moves, which saves an entry for every value
+  that never animates; `nka_set_keep_at_rest(anim, 1)` stores it anyway.
 - Parametric curves are computed exactly rather than read from lookup tables.
 - Clip files became buffers you read and write yourself, little-endian and checksummed.
 - Bugs fixed on the way, among them: the queue policy only waited a frame, additive tweens added their
