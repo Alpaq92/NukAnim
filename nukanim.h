@@ -85,9 +85,9 @@ NKA_API void nka_clear(struct nka_context *a);
 NKA_API void nka_reserve(struct nka_context *a, int tweens);
 NKA_API void nka_set_time_scale(struct nka_context *a, float scale);
 NKA_API float nka_time_scale(const struct nka_context *a);
-/* On by default: a tween asked for its init value is not stored. */
-NKA_API void nka_set_lazy_init(struct nka_context *a, int on);
-NKA_API int nka_lazy_init(const struct nka_context *a);
+/* Off by default: a tween first asked at its target is not stored. */
+NKA_API void nka_set_keep_at_rest(struct nka_context *a, int on);
+NKA_API int nka_keep_at_rest(const struct nka_context *a);
 /* The sizes that relative targets are fractions of. */
 NKA_API void nka_set_anchor(struct nka_context *a, int space, struct nk_vec2 size);
 NKA_API struct nk_vec2 nka_anchor(const struct nka_context *a, int space);
@@ -954,7 +954,7 @@ struct nka_context {
     double time;
     float dt, scale;
     nk_uint frame;
-    int lazy, busy;
+    int keep_at_rest, busy;
     nka_ease_fn custom[16];
     struct nk_vec2 anchors[NKA_ANCHOR_COUNT];
     struct nka__map chans, anims;
@@ -1535,7 +1535,7 @@ static void nka__tween(struct nka_context *a, nk_hash id, nk_hash ch, int kind, 
     nk_hash key = nka__key(id, ch, kind);
     struct nka__chan *c = (struct nka__chan *)nka__get(&a->chans, key);
     if (!c) {
-        if (a->lazy && policy < NKA_POLICY_ADDITIVE && nka__near(target, init, n)) c = 0;
+        if (!a->keep_at_rest && policy < NKA_POLICY_ADDITIVE && nka__near(target, init, n)) c = 0;
         else c = (struct nka__chan *)nka__put(a, &a->chans, key, 0);
         if (!c) {
             for (i = 0; i < 4; ++i) out[i] = target[i];
@@ -6925,7 +6925,6 @@ NKA_API struct nka_context *nka_create(const struct nk_allocator *alloc)
     nka__zero(a, sizeof *a);
     a->alloc = al;
     a->scale = 1;
-    a->lazy = 1;
     a->chans.size = sizeof(struct nka__chan);
     a->anims.size = sizeof(struct nka__anim);
     a->path_map.size = sizeof(struct nka__path_data);
@@ -7014,8 +7013,8 @@ NKA_API void nka_reserve(struct nka_context *a, int tweens)
 
 NKA_API void nka_set_time_scale(struct nka_context *a, float scale) { if (a) a->scale = scale > 0 ? scale : 0; }
 NKA_API float nka_time_scale(const struct nka_context *a) { return a ? a->scale : 1; }
-NKA_API void nka_set_lazy_init(struct nka_context *a, int on) { if (a) a->lazy = on != 0; }
-NKA_API int nka_lazy_init(const struct nka_context *a) { return a ? a->lazy : 1; }
+NKA_API void nka_set_keep_at_rest(struct nka_context *a, int on) { if (a) a->keep_at_rest = on != 0; }
+NKA_API int nka_keep_at_rest(const struct nka_context *a) { return a ? a->keep_at_rest : 0; }
 
 #endif /* NKA__IMPLEMENTED */
 #endif /* NUKANIM_IMPLEMENTATION */
